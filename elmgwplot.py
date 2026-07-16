@@ -220,6 +220,22 @@ class Parsed:
     uptime_s: float = 0.0
     lines: int = 0
     unmatched_topo: int = 0
+    # ISO 8601 wall-clock timestamp of the last timestamped line in the log,
+    # NOT just the last GATEWAY data delivery -- TOPO/PDR/event/trailing
+    # lines count too. Consumed by fetch-and-plot.sh for the dashboard's
+    # "last line of log time" indicator. Unlike deliveries[-1].ts this is
+    # the true end-of-log time and stays current even if the log stops with
+    # non-delivery lines.
+    last_line_ts: str = ""
+    # Elapsed seconds (since the first timestamped line, t0) of the last
+    # timestamped line -- the analog of Delivery.t but for ANY line, not just
+    # deliveries. fig_h_packets uses this as the true "log end" so per-node
+    # last_heard_ago_h measures the gap to the END OF THE LOG, not (as
+    # before) to the last delivery. With logs that keep emitting PDR/event
+    # lines after the last GATEWAY-data delivery, the old delivery-anchored
+    # computation understated staleness by however long that tail is (often
+    # hours); the freshness table now reports the real age.
+    last_t: float = 0.0
 
 
 # --------------------------------------------------------------------------
@@ -261,6 +277,15 @@ def parse_log(path: Path) -> Parsed:
                 int(m.group("Y")), int(m.group("Mo")), int(m.group("D")), hh, mm, ss, ms * 1000
             )
             ts = real_ts.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]  # ISO 8601, Grafana parses this reliably
+            # Every timestamped line updates last_line_ts / last_t, so they
+            # track the true end of the log regardless of line kind
+            # (Data/TOPO/PDR/event). last_line_ts is the value the dashboard
+            # surfaces as "last line of log time"; last_t lets fig_h_packets
+            # anchor last_heard_ago_h to the real log end, not to the last
+            # delivery (deliveries[-1].ts would miss trailing non-delivery
+            # lines and understate each node's age).
+            out.last_line_ts = ts
+            out.last_t = t
 
             if (g := RE_DATA.search(body)) is not None:
                 pending = Delivery(
@@ -1083,11 +1108,15 @@ def fig_h_packets(out: Out, p: Parsed) -> None:
             for d, is_dup in row_order
         ],
     )
-    # Log end = last delivery's timestamp. The age of a node's last packet is
-    # the gap between that packet and the end of the log; emit it explicitly as
-    # "last_heard_ago_h" so downstream consumers (fetch-and-plot.sh / dashboard)
-    # don't have to reconstruct it from column counts.
-    log_end_h = p.deliveries[-1].t / 3600
+    # Log end = the last timestamped LINE, not the last delivery. The age of a
+    # node's last packet is the gap between that packet and the end of the log;
+    # emit it explicitly as "last_heard_ago_h" so downstream consumers
+    # (fetch-and-plot.sh / dashboard) don't have to reconstruct it from column
+    # counts. Using deliveries[-1].t here (as the original code did)
+    # underestimated each node's age when the log kept emitting PDR/event
+    # lines after the final delivery -- common when a node's silence is the
+    # very thing the dashboard reader is trying to spot.
+    log_end_h = p.last_t / 3600
     out.csv(
         "H_packet_nodes",
         [
@@ -1178,6 +1207,10 @@ def main() -> None:
     for w in warnings:
         print(f"  warning: {w}")
     print(f"wrote {len(out.written)} files to {outdir}/")
+    # Machine-readable line for fetch-and-plot.sh: the ISO timestamp of the
+    # last timestamped *line* in the log (not just the last delivery), surfaced
+    # for the dashboard's "last line of log time" indicator.
+    print(f"last_line_ts={p.last_line_ts}")
 
 
 if __name__ == "__main__":

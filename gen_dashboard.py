@@ -215,6 +215,45 @@ panels.append(panel(10, "E. Logical topology", "geomap",
 # Row 4: Data
 panels.append(row(15, "Data", 39))
 
+# Freshness table surfaced AT THE TOP OF THE OPEN "Data" ROW so a viewer
+# opening the dashboard immediately sees how recent the underlying data is.
+# J_freshness.csv is written by fetch-and-plot.sh and has one summary row
+# (node="(data fetch)", last_fetch=<wall-clock grab>, last_log_line=<ISO of
+# the log's last timestamped line>) followed by one row per node carrying
+# that node's last-heard-from age. last_fetch comes from the shell's `date`
+# and carries a numeric zone offset (-0400), while last_log_line is the naive
+# ISO elmgwplot.py emits (YYYY-MM-DDTHH:mm:ss.SSS, no zone). Both are declared
+# "string" up front and then converted to "time" via convertFieldType, the
+# SAME pattern the temperature/battery panels use -- declaring them "time" in
+# the CSV schema instead makes the datasource parse them as UTC (4h offset
+# from the dashboard's Toronto display). see the convertFieldType notes on
+# panel 18 for the underlying reason. last_heard_ago stays a string ("Nh Nm")
+# for a friendly read and is rendered as-is in the table.
+freshness_transforms = [
+    convert_field_type("last_fetch", "time", date_format="YYYY-MM-DDTHH:mm:ssZZ"),
+    convert_field_type("last_log_line", "time", date_format="YYYY-MM-DDTHH:mm:ss.SSS"),
+]
+panels.append(panel(19, "Freshness — last fetch / last log line", "table",
+    {"h": 4, "w": 24, "x": 0, "y": 40},
+    [csv_query("F", "J_freshness.csv", [
+        fstr("node"), fstr("last_fetch"), fstr("last_log_line"), fstr("last_heard_ago")])],
+    # showHeader + a tight cell padding keep all 4 columns on one row each.
+    {"showHeader": True, "footer": {"show": False}},
+    {},
+    freshness_transforms,
+    overrides=[
+        # Right-align ISO time columns so timestamps line up in the header row.
+        {"matcher": {"id": "byName", "options": "last_fetch"},
+         "properties": [{"id": "custom.align", "value": "right"},
+                        {"id": "unit", "value": "time: YYYY-MM-DD HH:mm:ss"}]},
+        {"matcher": {"id": "byName", "options": "last_log_line"},
+         "properties": [{"id": "custom.align", "value": "right"},
+                        {"id": "unit", "value": "time: YYYY-MM-DD HH:mm:ss"}]},
+        {"matcher": {"id": "byName", "options": "last_heard_ago"},
+         "properties": [{"id": "custom.align", "value": "right"}]},
+    ],
+    ))
+
 dot_line_custom = {"drawStyle": "line", "lineWidth": 1, "pointSize": 5, "showPoints": "always",
                    "spanNulls": False}
 node_split_transforms = [
@@ -299,7 +338,7 @@ node_split_transforms = [
 #     dot at each packet event. This is the same one-series-per-node layout
 #     Panels I/F use.
 panels.append(panel(18, "J. Packet arrivals — racing to now (matrix)", "timeseries",
-    {"h": 8, "w": 24, "x": 0, "y": 40},
+    {"h": 8, "w": 24, "x": 0, "y": 44},
     [csv_query("H", "H_packets.csv", [
         {"name": "timestamp", "type": "string"},
         {"name": "node", "type": "string"},
@@ -334,7 +373,7 @@ panels.append(panel(18, "J. Packet arrivals — racing to now (matrix)", "timese
     ))
 
 panels.append(panel(16, "I. Reported temperature over time", "timeseries",
-    {"h": 8, "w": 24, "x": 0, "y": 48},
+    {"h": 8, "w": 24, "x": 0, "y": 52},
     [csv_query("I", "I_temperature.csv", [fstr("timestamp"), fstr("node"), fnum("temp_c")])],
     {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": True, "calcs": []},
      "tooltip": {"mode": "multi", "sort": "none"}},
@@ -348,7 +387,7 @@ panels.append(panel(16, "I. Reported temperature over time", "timeseries",
     ]))
 
 panels.append(panel(17, "F. Reported battery percentage over time", "timeseries",
-    {"h": 8, "w": 24, "x": 0, "y": 56},
+    {"h": 8, "w": 24, "x": 0, "y": 60},
     [csv_query("F", "F_battery.csv", [fstr("timestamp"), fstr("node"), fnum("battery_pct")])],
     {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": True, "calcs": []},
      "tooltip": {"mode": "multi", "sort": "none"}},
@@ -362,10 +401,10 @@ panels.append(panel(17, "F. Reported battery percentage over time", "timeseries"
     ]))
 
 # Row 5: Gateway Info
-panels.append(row(13, "Gateway Info", 64))
+panels.append(row(13, "Gateway Info", 68))
 
 panels.append(panel(14, "GW. Gateway health (latest)", "gauge",
-    {"h": 8, "w": 24, "x": 0, "y": 65},
+    {"h": 8, "w": 24, "x": 0, "y": 69},
     [csv_query("GW", "tioups.log", [
         fstr("Timestamp"), fnum("Battery_%"), fnum("CPU_%"), fnum("RAM_%"), fnum("Storage_%"),
     ], uid=DS_UID_LOGS)],
@@ -389,7 +428,7 @@ dashboard = {
     "schemaVersion": 39,
     "version": 1,
     "timezone": "America/Toronto",
-    "refresh": "15m",
+    "refresh": "5m",
     "tags": ["elm", "gateway"],
     # Default to the last 24 hours: wide enough to keep the temperature/battery
     # timeseries meaningful (they use real timestamps, so a tight range would

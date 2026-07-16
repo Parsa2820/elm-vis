@@ -4,7 +4,7 @@
   "schemaVersion": 39,
   "version": 1,
   "timezone": "America/Toronto",
-  "refresh": "15m",
+  "refresh": "5m",
   "tags": [
     "elm",
     "gateway"
@@ -549,6 +549,139 @@
       "datasource": null
     },
     {
+      "id": 19,
+      "type": "table",
+      "title": "Freshness \u2014 last fetch / last log line",
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "datasource": {
+        "type": "marcusolsson-csv-datasource",
+        "uid": "elm-csv"
+      },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "marcusolsson-csv-datasource",
+            "uid": "elm-csv"
+          },
+          "queryType": "csvFile",
+          "path": "J_freshness.csv",
+          "header": true,
+          "delimiter": ",",
+          "skipRows": 0,
+          "decimalSeparator": ".",
+          "ignoreUnknown": true,
+          "schema": [
+            {
+              "name": "node",
+              "type": "string"
+            },
+            {
+              "name": "last_fetch",
+              "type": "string"
+            },
+            {
+              "name": "last_log_line",
+              "type": "string"
+            },
+            {
+              "name": "last_heard_ago",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_fetch"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "time: YYYY-MM-DD HH:mm:ss"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_log_line"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "time: YYYY-MM-DD HH:mm:ss"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "last_heard_ago"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "last_fetch",
+                "destinationType": "time",
+                "dateFormat": "YYYY-MM-DDTHH:mm:ssZZ"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "last_log_line",
+                "destinationType": "time",
+                "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
+              }
+            ],
+            "fields": {}
+          }
+        }
+      ],
+      "pluginVersion": "13.1.0"
+    },
+    {
       "id": 18,
       "type": "timeseries",
       "title": "J. Packet arrivals \u2014 racing to now (matrix)",
@@ -556,7 +689,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 44
       },
       "datasource": {
         "type": "marcusolsson-csv-datasource",
@@ -681,7 +814,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 52
       },
       "datasource": {
         "type": "marcusolsson-csv-datasource",
@@ -802,7 +935,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 60
       },
       "datasource": {
         "type": "marcusolsson-csv-datasource",
@@ -931,7 +1064,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 64
+        "y": 68
       },
       "collapsed": true,
       "panels": [
@@ -943,7 +1076,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 65
+            "y": 69
           },
           "datasource": {
             "type": "marcusolsson-csv-datasource",
