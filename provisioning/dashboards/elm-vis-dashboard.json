@@ -113,7 +113,8 @@
               }
             ]
           },
-          "transformations": []
+          "transformations": [],
+          "pluginVersion": "13.1.0"
         },
         {
           "id": 3,
@@ -209,7 +210,8 @@
                 "fields": {}
               }
             }
-          ]
+          ],
+          "pluginVersion": "13.1.0"
         }
       ],
       "datasource": null
@@ -303,7 +305,8 @@
               }
             ]
           },
-          "transformations": []
+          "transformations": [],
+          "pluginVersion": "13.1.0"
         },
         {
           "id": 6,
@@ -395,7 +398,8 @@
                 "fields": {}
               }
             }
-          ]
+          ],
+          "pluginVersion": "13.1.0"
         }
       ],
       "datasource": null
@@ -524,7 +528,8 @@
             "defaults": {},
             "overrides": []
           },
-          "transformations": []
+          "transformations": [],
+          "pluginVersion": "13.1.0"
         }
       ],
       "datasource": null
@@ -539,299 +544,384 @@
         "x": 0,
         "y": 39
       },
-      "collapsed": true,
-      "panels": [
+      "collapsed": false,
+      "panels": [],
+      "datasource": null
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "J. Packet arrivals \u2014 racing to now (matrix)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "datasource": {
+        "type": "marcusolsson-csv-datasource",
+        "uid": "elm-csv"
+      },
+      "targets": [
         {
-          "id": 18,
-          "type": "table",
-          "title": "J. Data freshness",
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 40
-          },
+          "refId": "H",
           "datasource": {
             "type": "marcusolsson-csv-datasource",
             "uid": "elm-csv"
           },
-          "targets": [
+          "queryType": "csvFile",
+          "path": "H_packets.csv",
+          "header": true,
+          "delimiter": ",",
+          "skipRows": 0,
+          "decimalSeparator": ".",
+          "ignoreUnknown": true,
+          "schema": [
             {
-              "refId": "J",
-              "datasource": {
-                "type": "marcusolsson-csv-datasource",
-                "uid": "elm-csv"
-              },
-              "queryType": "csvFile",
-              "path": "J_freshness.csv",
-              "header": true,
-              "delimiter": ",",
-              "skipRows": 0,
-              "decimalSeparator": ".",
-              "ignoreUnknown": true,
-              "schema": [
-                {
-                  "name": "node",
-                  "type": "string"
-                },
-                {
-                  "name": "last_fetch",
-                  "type": "string"
-                },
-                {
-                  "name": "last_heard_ago",
-                  "type": "string"
-                }
-              ]
-            }
-          ],
-          "options": {
-            "showHeader": true,
-            "footer": {
-              "show": false
-            }
-          },
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                }
-              }
-            },
-            "overrides": []
-          },
-          "transformations": []
-        },
-        {
-          "id": 16,
-          "type": "timeseries",
-          "title": "I. Reported temperature over time",
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 48
-          },
-          "datasource": {
-            "type": "marcusolsson-csv-datasource",
-            "uid": "elm-csv"
-          },
-          "targets": [
-            {
-              "refId": "I",
-              "datasource": {
-                "type": "marcusolsson-csv-datasource",
-                "uid": "elm-csv"
-              },
-              "queryType": "csvFile",
-              "path": "I_temperature.csv",
-              "header": true,
-              "delimiter": ",",
-              "skipRows": 0,
-              "decimalSeparator": ".",
-              "ignoreUnknown": true,
-              "schema": [
-                {
-                  "name": "timestamp",
-                  "type": "string"
-                },
-                {
-                  "name": "node",
-                  "type": "string"
-                },
-                {
-                  "name": "temp_c",
-                  "type": "number"
-                }
-              ]
-            }
-          ],
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true,
-              "calcs": []
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "drawStyle": "line",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "showPoints": "always",
-                "fillOpacity": 10,
-                "spanNulls": false
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "temp_c"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "celsius"
-                  }
-                ]
-              }
-            ]
-          },
-          "transformations": [
-            {
-              "id": "convertFieldType",
-              "options": {
-                "conversions": [
-                  {
-                    "targetField": "timestamp",
-                    "destinationType": "time",
-                    "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
-                  }
-                ],
-                "fields": {}
-              }
+              "name": "timestamp",
+              "type": "string"
             },
             {
-              "id": "partitionByValues",
-              "options": {
-                "fields": [
-                  "node"
-                ],
-                "naming": {
-                  "asLabels": true
-                }
-              }
-            }
-          ]
-        },
-        {
-          "id": 17,
-          "type": "timeseries",
-          "title": "F. Reported battery percentage over time",
-          "gridPos": {
-            "h": 8,
-            "w": 24,
-            "x": 0,
-            "y": 56
-          },
-          "datasource": {
-            "type": "marcusolsson-csv-datasource",
-            "uid": "elm-csv"
-          },
-          "targets": [
-            {
-              "refId": "F",
-              "datasource": {
-                "type": "marcusolsson-csv-datasource",
-                "uid": "elm-csv"
-              },
-              "queryType": "csvFile",
-              "path": "F_battery.csv",
-              "header": true,
-              "delimiter": ",",
-              "skipRows": 0,
-              "decimalSeparator": ".",
-              "ignoreUnknown": true,
-              "schema": [
-                {
-                  "name": "timestamp",
-                  "type": "string"
-                },
-                {
-                  "name": "node",
-                  "type": "string"
-                },
-                {
-                  "name": "battery_pct",
-                  "type": "number"
-                }
-              ]
-            }
-          ],
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true,
-              "calcs": []
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "none"
-            }
-          },
-          "fieldConfig": {
-            "defaults": {
-              "custom": {
-                "drawStyle": "line",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "showPoints": "always",
-                "fillOpacity": 10,
-                "spanNulls": false
-              }
-            },
-            "overrides": [
-              {
-                "matcher": {
-                  "id": "byName",
-                  "options": "battery_pct"
-                },
-                "properties": [
-                  {
-                    "id": "unit",
-                    "value": "percent"
-                  },
-                  {
-                    "id": "min",
-                    "value": 0
-                  },
-                  {
-                    "id": "max",
-                    "value": 100
-                  }
-                ]
-              }
-            ]
-          },
-          "transformations": [
-            {
-              "id": "convertFieldType",
-              "options": {
-                "conversions": [
-                  {
-                    "targetField": "timestamp",
-                    "destinationType": "time",
-                    "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
-                  }
-                ],
-                "fields": {}
-              }
+              "name": "node",
+              "type": "string"
             },
             {
-              "id": "partitionByValues",
-              "options": {
-                "fields": [
-                  "node"
-                ],
-                "naming": {
-                  "asLabels": true
-                }
-              }
+              "name": "node_index",
+              "type": "number"
             }
           ]
         }
       ],
-      "datasource": null
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "always",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "node_index"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": -0.5
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "node (index \u2014 see legend)"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "displayName",
+                "value": "${__field.labels.node}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "timestamp",
+                "destinationType": "time",
+                "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "node"
+            ],
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "pluginVersion": "13.1.0"
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "I. Reported temperature over time",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "datasource": {
+        "type": "marcusolsson-csv-datasource",
+        "uid": "elm-csv"
+      },
+      "targets": [
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "marcusolsson-csv-datasource",
+            "uid": "elm-csv"
+          },
+          "queryType": "csvFile",
+          "path": "I_temperature.csv",
+          "header": true,
+          "delimiter": ",",
+          "skipRows": 0,
+          "decimalSeparator": ".",
+          "ignoreUnknown": true,
+          "schema": [
+            {
+              "name": "timestamp",
+              "type": "string"
+            },
+            {
+              "name": "node",
+              "type": "string"
+            },
+            {
+              "name": "temp_c",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "always",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temp_c"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "temp_c"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.node}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "timestamp",
+                "destinationType": "time",
+                "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "node"
+            ],
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "pluginVersion": "13.1.0"
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "F. Reported battery percentage over time",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "marcusolsson-csv-datasource",
+        "uid": "elm-csv"
+      },
+      "targets": [
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "marcusolsson-csv-datasource",
+            "uid": "elm-csv"
+          },
+          "queryType": "csvFile",
+          "path": "F_battery.csv",
+          "header": true,
+          "delimiter": ",",
+          "skipRows": 0,
+          "decimalSeparator": ".",
+          "ignoreUnknown": true,
+          "schema": [
+            {
+              "name": "timestamp",
+              "type": "string"
+            },
+            {
+              "name": "node",
+              "type": "string"
+            },
+            {
+              "name": "battery_pct",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "showPoints": "always",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "battery_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "battery_pct"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "${__field.labels.node}"
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "timestamp",
+                "destinationType": "time",
+                "dateFormat": "YYYY-MM-DDTHH:mm:ss.SSS"
+              }
+            ],
+            "fields": {}
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "node"
+            ],
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "pluginVersion": "13.1.0"
     },
     {
       "id": 13,
@@ -955,7 +1045,8 @@
               }
             ]
           },
-          "transformations": []
+          "transformations": [],
+          "pluginVersion": "13.1.0"
         }
       ],
       "datasource": null

@@ -46,8 +46,8 @@ echo "[fetch-and-plot] generating plots for ${#logs[@]} log(s) ..."
 uv run --script /opt/elmgwplot/elmgwplot.py "${logs[@]}" --outdir "$PLOTS_DIR"
 
 # Freshness table for the dashboard: when this fetch ran, plus the last time
-# each node was heard from (elapsed hours into the log), reusing the
-# per-node stats elmgwplot.py already computed for the packet-arrivals CSV.
+# each node was heard from. elmgwplot.py reports this as "last_heard_ago_h" =
+# hours between the node's last packet and the end of the log.
 FETCHED_AT="$(TZ='America/Toronto' date +"%Y-%m-%dT%H:%M:%S%z")"
 {
     echo "node,last_fetch,last_heard_ago"
@@ -55,10 +55,11 @@ FETCHED_AT="$(TZ='America/Toronto' date +"%Y-%m-%dT%H:%M:%S%z")"
     if [ -f "$PLOTS_DIR/H_packet_nodes.csv" ]; then
         # elmgwplot.py's csv.writer uses CRLF line endings; strip the \r
         # before splitting fields or it ends up stuck to the last column.
-        # Column 6 is elapsed hours since last packet; convert "<float> h"
-        # into "Nh Nm" for a friendlier read in the dashboard table.
+        # Column 7 is last_heard_ago_h (hours since the node's last packet,
+        # measured against the end of the log); convert "<float> h" into
+        # "Nh Nm" for a friendlier read in the dashboard table.
         tail -n +2 "$PLOTS_DIR/H_packet_nodes.csv" | tr -d '\r' \
-            | awk -F',' -v OFS=',' '{ h=int($6); m=int(($6-h)*60); print $2, "", h "h " m "m" }'
+            | awk -F',' -v OFS=',' '{ h=int($7); m=int(($7-h)*60); print $2, "", h "h " m "m" }'
     fi
 } > "$PLOTS_DIR/J_freshness.csv"
 

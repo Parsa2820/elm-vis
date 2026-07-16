@@ -71,15 +71,29 @@ def convert_field_type(target_field, destination_type, date_format=None):
 
 
 def panel(pid, title, ptype, gridpos, targets, options=None, fieldconfig=None,
-          transformations=None, overrides=None, uid=DS_UID):
-    return {
+          transformations=None, overrides=None, time=None, uid=DS_UID):
+    p = {
         "id": pid, "type": ptype, "title": title, "gridPos": gridpos,
         "datasource": {"type": DS_TYPE, "uid": uid},
         "targets": targets,
         "options": options or {},
         "fieldConfig": {"defaults": (fieldconfig or {}), "overrides": overrides or []},
         "transformations": transformations or [],
+        # Every panel stamps the Grafana version it was authored against. This
+        # is mandatory for XY-chart panel 18: its migration handler rewrites
+        # any panel whose pluginVersion is empty as a legacy scatter config,
+        # wrapping the new-format {matcher:{...}} series inside a byName
+        # matcher's options. The decorated matcher then matches no field, the
+        # panel iterates zero series, the prepConfig "xySeries.length === 0"
+        # branch fires, and XY-charts render "No data". Stamping >= 11.1
+        # sends the handler down its "return panel.options" fast path so the
+        # series config survives untouched.
+        "pluginVersion": "13.1.0",
     }
+    if time is not None:
+        p["time"] = time
+    return p
+
 
 
 def row(pid, title, y):
@@ -88,21 +102,30 @@ def row(pid, title, y):
 
 
 def fold_rows(items):
-    """Return the panel list with every row collapsed by default. Grafana
-    represents a collapsed row by moving its member panels *inside* the
-    row's own "panels" array (rather than leaving them as top-level
-    siblings), so this regroups the flat list accordingly."""
+    """Return the panel list with every row collapsed-by-default except rows
+    named in OPEN_ROWS. Grafana represents a collapsed row by moving its
+    member panels *inside* the row's own "panels" array; an open row
+    instead keeps them as top-level siblings of the row object. So this
+    regroups the flat list based on each row's collapsed state."""
+    # Rows whose contents stay visible on dashboard load.
+    OPEN_ROWS = {"Data"}
     out = []
     current = None
+    collapse_current = True
     for it in items:
         if it["type"] == "row":
-            it["collapsed"] = True
+            collapse_current = it["title"] not in OPEN_ROWS
+            it["collapsed"] = collapse_current
             it["panels"] = []
             current = it
             out.append(it)
-        elif current is not None:
+        elif current is not None and collapse_current:
+            # Collapsed row: the member panels live inside the row's
+            # "panels" array so Grafana hides them until the row expands.
             current["panels"].append(it)
         else:
+            # Open row (or no current row): the panel stays a top-level
+            # sibling, rendered on dashboard load.
             out.append(it)
     return out
 
@@ -193,7 +216,7 @@ panels.append(panel(10, "E. Logical topology", "geomap",
 panels.append(row(15, "Data", 39))
 
 dot_line_custom = {"drawStyle": "line", "lineWidth": 1, "pointSize": 5, "showPoints": "always",
-                   "fillOpacity": 10, "spanNulls": False}
+                   "spanNulls": False}
 node_split_transforms = [
     # "timestamp" comes out of the CSV as plain text; convert it to a real
     # time value so the panel gets a genuine time axis.
@@ -206,13 +229,109 @@ node_split_transforms = [
 
 # J_freshness.csv is written by fetch-and-plot.sh (not elmgwplot.py): first
 # row is the wall-clock time of the last successful fetch, remaining rows
-# are each node's last-heard-from time as elapsed hours into the log --
-# reusing the per-node stats elmgwplot.py already computes for packets.
-panels.append(panel(18, "J. Data freshness", "table",
+# are each node's last-heard-from time as elapsed hours since that node's
+# last packet to the end of the log -- reusing the per-node stats
+# elmgwplot.py computes as "last_heard_ago_h" in H_packet_nodes.csv.
+#
+# Panel 18 is the "racing to now" matrix the dashboard reader asked for:
+# nodes on the Y axis, time on the X axis (right edge == dashboard "now"),
+# one dot per packet event. Each node gets its own color AND a thin
+# connecting line through its packets, so a reader can trace one node's
+# sequence across the matrix at a glance.
+#
+# Implementation notes:
+#   * partitionByValues("node"): splits the single H_packets frame into one
+#     sub-frame per node; XY-chart's auto-mapping then creates one series
+#     per node sub-frame (own legend entry, own color from the palette).
+#     This is the same transform the temperature/battery panels (16/17)
+#     use to get one series per node. The earlier "No data" pitfall was
+#     NOT partitionByValues' fault -- it was the XY-chart migration
+#     handler corrupting the series config on panels without a
+#     pluginVersion stamp; panel() now stamps pluginVersion:"13.1.0",
+#     so the series config survives intact through partitionByValues.
+#   * show:"points+lines": each node's dots are joined by a line. Since
+#     y=node_index is constant within a series, the line is horizontal --
+#     that node's "racing lane".
+#   * schema declares timestamp type:"string" up front, then convertFieldType
+#     re-types it to "time" -- the SAME approach Panels I (16) and F (17) use
+#     (see node_split_transforms). This matches how I/F parse the naive ISO
+#     timestamps: convertFieldType applies the dashboard timezone (America/
+#     Toronto) when the dateFormat string has no zone designator, giving a
+#     frame of epoch-ms in local-time interpretation. Declaring timestamp
+#     type:"time" directly in the CSV schema instead makes the CSV plugin
+#     parse naive timestamps as UTC -- a 4-hour offset from the dashboard's
+#     Toronto display. That constant offset was why Panel J's packet dots
+#     appeared ~4h older than the same packets in Panel I: the underlying
+#     timestamps were the same; J read them as UTC, I read them as Toronto.
+#
+#     The earlier comment here said convertFieldType "breaks XY-chart"
+#     because the converted field's type didn't propagate into the panel's
+#     onlyNumTimeFields filter view (utils.ts prepSeries filters
+#     field.type === number || time). That workaround was needed only
+#     when pluginVersion wasn't stamped, because the XY-chart migration
+#     handler then rewrote the series config; panel() now stamps
+#     pluginVersion:"13.1.0", so the converted time-typed field survives
+#     intact and IS picked up by onlyNumTimeFields, matching X by name.
+#
+#   * panel type is "timeseries" (NOT "xychart"). The earlier XY-chart
+#     implementation fought Grafana's XY-chart on several fronts: it had
+#     no auto-clipping to the dashboard time picker (forcing an explicit
+#     filterByValue transform with the $__from/$__to variables), and -- the
+#     reason it ultimately got replaced -- its time-axis `range` callback
+#     (xychart/scatter.ts:323 `range: xIsTime ? (u, min, max) => [min, max]
+#     : undefined`) just echoes uPlot's data-fit min/max back, which means
+#     uPlot's hard/soft min/max on time axes are no-ops. So setting
+#     axisSoftMin:"$__from" / axisSoftMax:"now" silently failed to extend
+#     the X axis past the data extremes: opening the dashboard picker to a
+#     range starting BEFORE the first packet pinned the X axis' left edge
+#     to the first packet date instead of extending it further left to the
+#     picker's "from" -- Panel J "stuck" at 07/15 while Panels I/F's
+#     timeseries axes natively tracked the picker's "from". Switching to
+#     the timeseries panel type eliminates the entire XY-chart time-axis
+#     extension problem at the source: timeseries panels auto-clip and
+#     auto-extend the X axis to the dashboard time picker range, exactly
+#     like Panels I/F do -- no manual filter, no softMin/softMax hacks.
+#
+#     The "racing to now matrix" effect (one dot per packet per node,
+#     horizontal lane per node) is preserved: partitionByValues(node)
+#     makes each node its own timeseries, and since y=node_index is constant
+#     within each series, the line is horizontal (that node's "lane") with a
+#     dot at each packet event. This is the same one-series-per-node layout
+#     Panels I/F use.
+panels.append(panel(18, "J. Packet arrivals — racing to now (matrix)", "timeseries",
     {"h": 8, "w": 24, "x": 0, "y": 40},
-    [csv_query("J", "J_freshness.csv", [fstr("node"), fstr("last_fetch"), fstr("last_heard_ago")])],
-    {"showHeader": True, "footer": {"show": False}},
-    {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}}))
+    [csv_query("H", "H_packets.csv", [
+        {"name": "timestamp", "type": "string"},
+        {"name": "node", "type": "string"},
+        {"name": "node_index", "type": "number"},
+    ])],
+    {
+        "legend": {"displayMode": "list", "placement": "bottom",
+                   "showLegend": True, "calcs": []},
+        "tooltip": {"mode": "multi", "sort": "none"},
+    },
+    {"custom": dot_line_custom},
+    node_split_transforms,
+    overrides=[
+        {"matcher": {"id": "byName", "options": "node_index"}, "properties": [
+            {"id": "decimals", "value": 0},
+            {"id": "min", "value": -0.5},
+            # No hardcoded axisSoftMax: with 15 nodes (indices 0..14) a soft
+            # max of 14.5 clipped the top lane off the visible axis. Soft max
+            # is only a hint anyway; letting Grafana auto-fit the Y scale to
+            # the actual distinct node_index values means the chart adapts to
+            # whatever node count the current log has.
+            {"id": "custom.axisLabel", "value": "node (index — see legend)"},
+            {"id": "unit", "value": "none"},
+            # Legend shows just the node address (e.g. "0x05"), not the
+            # value field name plus the partition label. partitionByValues
+            # with asLabels:true puts the partition value into the field's
+            # labels map keyed by the partition field ("node"), so
+            # ${__field.labels.node} resolves to that node's hex address.
+            {"id": "displayName", "value": "${__field.labels.node}"},
+        ]},
+    ],
+    ))
 
 panels.append(panel(16, "I. Reported temperature over time", "timeseries",
     {"h": 8, "w": 24, "x": 0, "y": 48},
@@ -221,7 +340,12 @@ panels.append(panel(16, "I. Reported temperature over time", "timeseries",
      "tooltip": {"mode": "multi", "sort": "none"}},
     {"custom": dot_line_custom},
     node_split_transforms,
-    overrides=[unit_override("temp_c", "celsius")]))
+    overrides=[
+        unit_override("temp_c", "celsius"),
+        {"matcher": {"id": "byName", "options": "temp_c"}, "properties": [
+            {"id": "displayName", "value": "${__field.labels.node}"},
+        ]},
+    ]))
 
 panels.append(panel(17, "F. Reported battery percentage over time", "timeseries",
     {"h": 8, "w": 24, "x": 0, "y": 56},
@@ -230,7 +354,12 @@ panels.append(panel(17, "F. Reported battery percentage over time", "timeseries"
      "tooltip": {"mode": "multi", "sort": "none"}},
     {"custom": dot_line_custom},
     node_split_transforms,
-    overrides=[unit_override("battery_pct", "percent", 0, 100)]))
+    overrides=[
+        unit_override("battery_pct", "percent", 0, 100),
+        {"matcher": {"id": "byName", "options": "battery_pct"}, "properties": [
+            {"id": "displayName", "value": "${__field.labels.node}"},
+        ]},
+    ]))
 
 # Row 5: Gateway Info
 panels.append(row(13, "Gateway Info", 64))

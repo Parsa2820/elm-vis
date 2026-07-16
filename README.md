@@ -58,7 +58,7 @@ be rebuilt from the CSV alone (e.g. in pgfplots).
 | E  | Logical topology                | `E_topology_{edges,nodes}.csv`           |
 | F  | Battery state of charge         | `F_battery.csv`, `F_battery_nodes.csv`   |
 | G  | Gateway-observable event timeline | `G_events.csv`, `G_event_{nodes,kinds}.csv` |
-| H  | Packet arrivals at the gateway  | `H_packets.csv`, `H_packet_nodes.csv`    |
+| H  | Packet arrivals at the gateway  | `H_packets.csv` (+ panel J), `H_packet_nodes.csv` |
 | I  | Reported temperature            | `I_temperature.csv`, `I_temperature_nodes.csv` |
 | J  | Data freshness (fetch-and-plot) | `J_freshness.csv`                        |
 
@@ -140,7 +140,8 @@ grouped into rows (collapsed by default):
       data into `node_locations.csv` and it appears on the next refresh —
       no dashboard regeneration needed.
 4. **Data** —
-   J. Data freshness (table),
+   J. Packet arrivals — racing to now (xychart matrix; nodes on Y, time on X,
+      one dot per packet, right edge == now; reads `H_packets.csv`),
    I. Reported temperature over time (timeseries),
    F. Reported battery percentage over time (timeseries)
 5. **Gateway Info** —

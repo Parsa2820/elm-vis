@@ -1057,24 +1057,43 @@ def fig_h_packets(out: Out, p: Parsed) -> None:
         dup.append(key in seen)
         seen.add(key)
 
+    # Rows are sorted by (node_index, timestamp) rather than strict delivery
+    # order so that panel J's partitionByValues("node") encounters distinct
+    # node values in the same hex-sorted order panels I and F emit -- and
+    # therefore in the same Grafana palette order (series i gets the same
+    # colour across J/I/F).  timestamp tie-breaks within a node so a node's
+    # own dot ordering on the time axis still matches chronological order.
+    row_order = sorted(
+        zip(p.deliveries, dup),
+        key=lambda d_u: (row[d_u[0].origin], d_u[0].t),
+    )
+
     out.csv(
         "H_packets",
         [
-            "elapsed_h", "node", "node_index", "packet_id", "sender",
+            "elapsed_h", "timestamp", "node", "node_index", "packet_id", "sender",
             "hops", "delay_s", "rssi_dbm", "duplicate",
         ],
         [
             [
-                round(d.t / 3600, 6), hexlabel(d.origin), row[d.origin], d.pid,
+                round(d.t / 3600, 6), d.ts, hexlabel(d.origin), row[d.origin], d.pid,
                 hexlabel(d.sender), "" if d.hops is None else d.hops,
                 d.delay_s, d.rssi, int(is_dup),
             ]
-            for d, is_dup in zip(p.deliveries, dup)
+            for d, is_dup in row_order
         ],
     )
+    # Log end = last delivery's timestamp. The age of a node's last packet is
+    # the gap between that packet and the end of the log; emit it explicitly as
+    # "last_heard_ago_h" so downstream consumers (fetch-and-plot.sh / dashboard)
+    # don't have to reconstruct it from column counts.
+    log_end_h = p.deliveries[-1].t / 3600
     out.csv(
         "H_packet_nodes",
-        ["node_index", "node", "packets", "duplicates", "first_h", "last_h"],
+        [
+            "node_index", "node", "packets", "duplicates",
+            "first_h", "last_h", "last_heard_ago_h",
+        ],
         [
             [
                 row[n], hexlabel(n),
@@ -1082,6 +1101,7 @@ def fig_h_packets(out: Out, p: Parsed) -> None:
                 sum(1 for d, u in zip(p.deliveries, dup) if d.origin == n and u),
                 round(min(d.t for d in p.deliveries if d.origin == n) / 3600, 6),
                 round(max(d.t for d in p.deliveries if d.origin == n) / 3600, 6),
+                round(log_end_h - max(d.t for d in p.deliveries if d.origin == n) / 3600, 6),
             ]
             for n in nodes
         ],
