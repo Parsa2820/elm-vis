@@ -42,8 +42,29 @@ if [ ${#logs[@]} -eq 0 ]; then
     exit 0
 fi
 
-echo "[fetch-and-plot] generating plots for ${#logs[@]} log(s) ..."
-LAST_LOG_LINE="$(uv run --script /opt/elmgwplot/elmgwplot.py "${logs[@]}" --outdir "$PLOTS_DIR" \
+# Filenames embed an ISO timestamp (tio_ttyAMA0_YYYY-MM-DDTHH:MM:SS.log), so a
+# reverse lexical sort gives the newest capture first. Plot only that one —
+# elmgwplot.py takes a single log, and stitching independent captures together
+# would only double-count packets. Skip empty/dummy files (size 0 or bogus
+# timestamp like "1999-...") so a half-set clock on the gateway can't win the
+# "latest" race.
+latest_log=""
+for f in $(printf '%s\n' "${logs[@]}" | LC_ALL=C sort -r); do
+    [ -s "$f" ] || continue
+    case "$f" in
+        *_1999-*) continue ;;
+    esac
+    latest_log="$f"
+    break
+done
+
+if [ -z "$latest_log" ]; then
+    echo "[fetch-and-plot] no non-empty tio_ttyAMA0_* log in $LOG_DIR; nothing to plot." >&2
+    exit 0
+fi
+
+echo "[fetch-and-plot] generating plots for ${#logs[@]} log(s); plotting latest: $(basename "$latest_log")"
+LAST_LOG_LINE="$(uv run --script /opt/elmgwplot/elmgwplot.py "$latest_log" --outdir "$PLOTS_DIR" \
     | tr -d '\r' | awk -F'=' '/^last_line_ts=/{print $2; found=1} END{if(!found) exit 1}')"
 
 # Freshness table for the dashboard: when this fetch ran, plus the last time
